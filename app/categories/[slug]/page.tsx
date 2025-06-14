@@ -4,18 +4,18 @@
  * 실제 Supabase 데이터베이스와 연동
  */
 
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { createServerSupabaseClient } from '@/lib/supabase-server';
-import PostCard from '@/components/blog/post-card';
-import type { Metadata } from 'next';
-import { Database } from '@/types/database.types';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import PostCard from "@/components/blog/post-card";
+import type { Metadata } from "next";
+import { Database } from "@/types/database.types";
 
 export const dynamic = "force-dynamic";
 
 // 타입 정의
-type Category = Database['public']['Tables']['categories']['Row'];
-type Post = Database['public']['Tables']['posts']['Row'];
+type Category = Database["public"]["Tables"]["categories"]["Row"];
+type Post = Database["public"]["Tables"]["posts"]["Row"];
 
 type PostWithCategory = Post & {
   categories?: Category | null;
@@ -29,21 +29,21 @@ type PageProps = {
 // 정적 경로 생성 함수
 export async function generateStaticParams() {
   try {
-    console.log('=== 카테고리 정적 경로 생성 시작 ===');
-    
+    console.log("=== 카테고리 정적 경로 생성 시작 ===");
+
     // 빌드 타임에는 인증 없이 공개 데이터만 조회
-    const { createClient } = await import('@supabase/supabase-js');
+    const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-    
+
     const { data: categories, error } = await supabase
-      .from('categories')
-      .select('slug');
+      .from("categories")
+      .select("slug");
 
     if (error) {
-      console.error('정적 경로 생성 오류:', error);
+      console.error("정적 경로 생성 오류:", error);
       return [];
     }
 
@@ -52,49 +52,53 @@ export async function generateStaticParams() {
       slug: category.slug,
     }));
   } catch (error) {
-    console.error('정적 경로 생성 중 오류 발생:', error);
+    console.error("정적 경로 생성 중 오류 발생:", error);
     return [];
   }
 }
 
 // 동적 메타데이터 생성 함수
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  
+
   try {
-    console.log('=== 카테고리 메타데이터 생성 시작 ===', slug);
-    
+    console.log("=== 카테고리 메타데이터 생성 시작 ===", slug);
+
     // 빌드 타임에는 인증 없이 공개 데이터만 조회
-    const { createClient } = await import('@supabase/supabase-js');
+    const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-    
+
     // 카테고리 정보 조회
     const { data: category, error: categoryError } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('slug', slug)
+      .from("categories")
+      .select("*")
+      .eq("slug", slug)
       .single();
-  
+
     if (categoryError || !category) {
-      console.log('❌ 카테고리 메타데이터 생성 실패: 카테고리 없음');
+      console.log("❌ 카테고리 메타데이터 생성 실패: 카테고리 없음");
       return {
-        title: '카테고리를 찾을 수 없습니다 | My Blog',
+        title: "카테고리를 찾을 수 없습니다 | My Blog",
       };
     }
 
     // 해당 카테고리의 게시물 수 조회
     const { count } = await supabase
-      .from('posts')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .eq('category_id', category.id);
+      .from("posts")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "published")
+      .eq("category_id", category.id);
 
-    const description = category.description || `${category.name} 관련 글들을 모아놓은 카테고리입니다.`;
+    const description =
+      category.description ||
+      `${category.name} 관련 글들을 모아놓은 카테고리입니다.`;
 
-    console.log('✅ 카테고리 메타데이터 생성 완료:', category.name);
+    console.log("✅ 카테고리 메타데이터 생성 완료:", category.name);
     return {
       title: `${category.name} | My Blog`,
       description: `${description} - ${count || 0}개의 글이 있습니다.`,
@@ -104,41 +108,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     };
   } catch (error) {
-    console.error('메타데이터 생성 중 오류 발생:', error);
+    console.error("메타데이터 생성 중 오류 발생:", error);
     return {
-      title: '카테고리를 찾을 수 없습니다 | My Blog',
+      title: "카테고리를 찾을 수 없습니다 | My Blog",
     };
   }
 }
 
 export default async function CategoryDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  
+
   try {
-    console.log('=== 카테고리 상세 페이지: 데이터 조회 시작 ===', slug);
-    
+    console.log("=== 카테고리 상세 페이지: 데이터 조회 시작 ===", slug);
+
     // 2025년 새로운 Third-Party Auth 방식 Supabase 클라이언트 생성
     const supabase = await createServerSupabaseClient();
-    
+
     // 카테고리 정보 조회
     const { data: category, error: categoryError } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('slug', slug)
+      .from("categories")
+      .select("*")
+      .eq("slug", slug)
       .single();
-  
+
     // 카테고리가 존재하지 않으면 404 반환
     if (categoryError || !category) {
-      console.log('❌ 카테고리 없음:', categoryError?.message || 'Not found');
+      console.log("❌ 카테고리 없음:", categoryError?.message || "Not found");
       notFound();
     }
 
-    console.log('✅ 카테고리 조회 성공:', category.name);
+    console.log("✅ 카테고리 조회 성공:", category.name);
 
     // 해당 카테고리의 게시물들 조회
     const { data: posts, error: postsError } = await supabase
-      .from('posts')
-      .select(`
+      .from("posts")
+      .select(
+        `
         id,
         title,
         content,
@@ -154,13 +159,14 @@ export default async function CategoryDetailPage({ params }: PageProps) {
           slug,
           color
         )
-      `)
-      .eq('status', 'published')
-      .eq('category_id', category.id)
-      .order('created_at', { ascending: false });
+      `
+      )
+      .eq("status", "published")
+      .eq("category_id", category.id)
+      .order("created_at", { ascending: false });
 
     if (postsError) {
-      console.error('게시물 조회 오류:', postsError);
+      console.error("게시물 조회 오류:", postsError);
       throw postsError;
     }
 
@@ -168,54 +174,54 @@ export default async function CategoryDetailPage({ params }: PageProps) {
 
     // Category 타입의 빈 객체
     const EMPTY_CATEGORY = {
-      id: '',
-      name: '',
-      slug: '',
-      description: '',
+      id: "",
+      name: "",
+      slug: "",
+      description: "",
       icon: undefined,
       parentId: undefined,
-      color: '#3b82f6',
+      color: "#3b82f6",
     };
 
     // PostCard 컴포넌트에 맞는 데이터 형식으로 변환
-    const transformedPosts = (posts || []).map(post => ({
+    const transformedPosts = (posts || []).map((post) => ({
       id: post.id,
       title: post.title,
-      content: post.content || '',
+      content: post.content || "",
       slug: post.slug,
-      excerpt: post.excerpt || post.content?.substring(0, 200) + '...' || '',
+      excerpt: post.excerpt || post.content?.substring(0, 200) + "..." || "",
       coverImage: post.cover_image_url,
       images: [],
       author: {
         id: post.author_id,
-        name: '작성자', // Clerk에서 가져올 예정
+        name: "작성자", // Clerk에서 가져올 예정
         bio: undefined,
-        profileImage: '/default-avatar.png',
+        profileImage: "/default-avatar.png",
         role: undefined,
         email: undefined,
         socialLinks: undefined,
       },
       category: Array.isArray(post.categories)
-        ? ((post.categories[0] as any)
-            ? {
-                id: (post.categories[0] as any).id,
-                name: (post.categories[0] as any).name,
-                slug: (post.categories[0] as any).slug,
-                description: (post.categories[0] as any).description ?? '',
-                icon: undefined,
-                parentId: undefined,
-                color: (post.categories[0] as any).color ?? '#3b82f6',
-              }
-            : EMPTY_CATEGORY)
+        ? (post.categories[0] as any)
+          ? {
+              id: (post.categories[0] as any).id,
+              name: (post.categories[0] as any).name,
+              slug: (post.categories[0] as any).slug,
+              description: (post.categories[0] as any).description ?? "",
+              icon: undefined,
+              parentId: undefined,
+              color: (post.categories[0] as any).color ?? "#3b82f6",
+            }
+          : EMPTY_CATEGORY
         : post.categories
         ? {
             id: (post.categories as any).id,
             name: (post.categories as any).name,
             slug: (post.categories as any).slug,
-            description: (post.categories as any).description ?? '',
+            description: (post.categories as any).description ?? "",
             icon: undefined,
             parentId: undefined,
-            color: (post.categories as any).color ?? '#3b82f6',
+            color: (post.categories as any).color ?? "#3b82f6",
           }
         : EMPTY_CATEGORY,
       publishedAt: post.created_at,
@@ -225,7 +231,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
       featured: false,
       tags: [],
       comments: [],
-      viewCount: post.view_count || 0
+      viewCount: post.view_count || 0,
     }));
 
     // 카테고리 정보 변환
@@ -233,11 +239,13 @@ export default async function CategoryDetailPage({ params }: PageProps) {
       id: category.id,
       name: category.name,
       slug: category.slug,
-      description: category.description || `${category.name} 관련 글들을 모아놓은 카테고리입니다.`,
-      color: category.color || '#3b82f6' // 데이터베이스의 color 컬럼 사용
+      description:
+        category.description ||
+        `${category.name} 관련 글들을 모아놓은 카테고리입니다.`,
+      color: category.color || "#3b82f6", // 데이터베이스의 color 컬럼 사용
     };
 
-    console.log('✅ 카테고리 상세 페이지 데이터 준비 완료');
+    console.log("✅ 카테고리 상세 페이지 데이터 준비 완료");
 
     return (
       <div className="py-16">
@@ -256,7 +264,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
 
             {/* 카테고리 정보 */}
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div 
+              <div
                 className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: transformedCategory.color }}
               />
@@ -308,7 +316,8 @@ export default async function CategoryDetailPage({ params }: PageProps) {
               <div className="text-center mt-12">
                 <div className="max-w-md mx-auto">
                   <p className="text-muted-foreground mb-4">
-                    더 많은 {transformedCategory.name} 관련 글들이 곧 업데이트됩니다.
+                    더 많은 {transformedCategory.name} 관련 글들이 곧
+                    업데이트됩니다.
                   </p>
                   <div className="flex justify-center gap-4">
                     <Link
@@ -333,10 +342,10 @@ export default async function CategoryDetailPage({ params }: PageProps) {
               <div className="text-6xl mb-4">📄</div>
               <h3 className="text-2xl font-bold mb-4">아직 글이 없습니다</h3>
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                {transformedCategory.name} 카테고리에는 아직 작성된 글이 없습니다. 
-                곧 고품질의 콘텐츠들이 업데이트될 예정입니다.
+                {transformedCategory.name} 카테고리에는 아직 작성된 글이
+                없습니다. 곧 고품질의 콘텐츠들이 업데이트될 예정입니다.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   href="/categories"
@@ -363,7 +372,7 @@ export default async function CategoryDetailPage({ params }: PageProps) {
       </div>
     );
   } catch (error) {
-    console.error('카테고리 페이지 데이터 조회 중 오류 발생:', error);
+    console.error("카테고리 페이지 데이터 조회 중 오류 발생:", error);
     notFound();
   }
-} 
+}
