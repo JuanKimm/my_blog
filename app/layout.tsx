@@ -153,18 +153,7 @@ export default function RootLayout({
               </div>
             </main>
             
-            {/* 푸터 */}
             <Footer />
-          </div>
-          
-          {/* 접근성을 위한 스킵 링크 */}
-          <div className="sr-only">
-            <a 
-              href="#main-content" 
-              className="absolute left-0 top-0 z-50 -translate-y-full transform bg-primary px-4 py-2 text-primary-foreground transition-transform focus:translate-y-0"
-            >
-              메인 콘텐츠로 건너뛰기
-            </a>
           </div>
         </Providers>
       </body>
